@@ -1,6 +1,6 @@
 import argparse
 from tqdm import tqdm
-from dataset import AnswersCSVDataset, QuestionsCSVDataset
+from dataset import AnswersCSVDataset, q_rubric_dict
 import subprocess
 
 
@@ -21,20 +21,13 @@ def TextSimilarity(str1, str2):
 parser = argparse.ArgumentParser()
 
 # Data args
-parser.add_argument('--answer_data_path', type=str,
+parser.add_argument('--answer_data_path', type=str, default="./answers_train.csv",
                     help='Path to the input answer dataset')
 
-parser.add_argument('--question_data_path', type=str,
-                    help='Path to input question dataset')
 
 args = parser.parse_args()
 
-# Get answer data from csv
-print("Loading Answer Data")
-# questions_dataset = QuestionsCSVDataset([args.answer_data_path])
-print("Done")
-
-# Get question data from csv
+#
 print("Loading Answer Data")
 answers_datset = AnswersCSVDataset([args.answer_data_path])
 print("Done")
@@ -48,8 +41,12 @@ for row in tqdm(answers_datset):
     a_feed = row[4]  # answer feedback
 
     # Get question text --> question_line
-    question_line = " "
+    question_reference = q_rubric_dict[q_id]
 
-    r = TextSimilarity(answer_line, question_line)
+    for a in question_reference:
+        r = TextSimilarity(answer_line, a)
+        print(r)
+    print(r)
 
     # Do some inference on r --> using Dice, Cosine, Lesk, or other measures
+    # And predict label
