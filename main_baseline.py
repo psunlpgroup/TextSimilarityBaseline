@@ -5,6 +5,7 @@ from sklearn.metrics import classification_report
 from sklearn import tree
 import subprocess
 import re
+from torch.utils.data import DataLoader
 
 cl_dict = {'correct': 0, 'partial correct': 1, 'incorrect': 2}
 
@@ -150,8 +151,8 @@ if __name__ == '__main__':
     #
     # Load Data
     #
-    test_data = AnswersCSVDataset([args.test_data_path])
-    train_data = AnswersCSVDataset([args.train_data_path]) if args.train_data_path else None
+    test_data = DataLoader(AnswersCSVDataset([args.test_data_path]))
+    train_data = DataLoader(AnswersCSVDataset([args.train_data_path]) if args.train_data_path else None)
 
     #
     # Fit on train set
