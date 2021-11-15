@@ -126,9 +126,9 @@ if __name__ == '__main__':
     # Arguments:
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data_path', type=str, default="./answers_train.csv",
+    parser.add_argument('--train_data_path', type=str, default="./Col-STAT/answers_train.csv",
                         help='Path to the train dataset')
-    parser.add_argument('--test_data_path', type=str, default="./answers_train.csv",
+    parser.add_argument('--test_data_path', type=str, default="./Col-STAT/answers_test.csv",
                         help='Path to the test dataset')
 
     parser.add_argument('--method', type=str, default='tree')
