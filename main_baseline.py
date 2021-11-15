@@ -170,6 +170,7 @@ if __name__ == '__main__':
         print(f"Threshold No Training")
 
     # Predict
+    print("Testing")
     labels, predictions = predict(test_data, classifier)
 
     # Calculate Accuracy
