@@ -6,6 +6,8 @@ from sklearn import tree
 import subprocess
 import re
 
+cl_dict = {'correct': 0, 'partial correct': 1, 'incorrect': 2}
+
 
 def text_similarity(str1, str2):
     """
@@ -33,75 +35,142 @@ def text_similarity(str1, str2):
     return similarity_features
 
 
-# Arguments:
-parser = argparse.ArgumentParser()
-parser.add_argument('--train_data_path', type=str, default="./answers_train.csv",
-                    help='Path to the train dataset')
-parser.add_argument('--test_data_path', type=str, default="./answers_train.csv",
-                    help='Path to the test dataset')
+def get_text_features(answer, reference_answers, metrics=('Raw Score', 'Cosine', 'Lesk', 'F-measure')):
+    """
+    Run text similarity on given data and return features
+    :param answer: student answer
+    :param reference_answers: reference (correct) answers
+    :param metrics: selects which text similarity metrics to use
+    :return: an array with the averages of each selected metric
+    """
+    averages = [0] * len(metrics)
 
-parser.add_argument('--method', type=str, default='threshold')
-parser.add_argument('--correct_threshold', type=float, default=.2)
-parser.add_argument('--partial_threshold', type=float, default=.1)
+    for a in reference_answers:
+        r = text_similarity(answer, a)
+        for idx, metric in enumerate(metrics):
+            if metric in r:
+                averages[idx] += r[metric]
 
-args = parser.parse_args()
+    averages = [i / len(reference_answers) for i in averages]
 
-cl_dict = {'correct': 0, 'partial correct': 1, 'incorrect': 2}
-
-# Load Data
-test_data = AnswersCSVDataset(args.test_data_path)
-
-"""
-    Fit on train set
-"""
-if args.method == 'tree':
-    X = []
-    Y = []
+    return averages
 
 
-y_true = []
-y_pred = []
-debug_counter = 0
-for row in tqdm(test_data):
-    a_id = row[0]  # answer id
-    answer_line = row[1].strip()  # answer text
+def get_row_data(row):
+    """
+    Parse data from sample in csv dataset
+    :param row: sample from dataset
+    :return: answer text, question id,
+    """
+    answer_text = row[1].strip()  # answer text
     q_id = row[2]  # question id
     a_score = row[3]  # answer score
-    a_feed = row[4]  # answer feedback
 
-    # Get question text --> question_line
-    question_reference = q_rubric_dict[q_id]
+    # Get reference answers
+    reference_answers = q_rubric_dict[q_id]
 
-    # We are classifying based on answer score
+    # We are classifying based on numeric answer score, so we parse it from a_score string
     if a_score.isnumeric():
-        a_score = int(a_score)
+        answer_score = int(a_score)
     else:
-        a_score = cl_dict[a_score]
-    y_true.append(a_score)
+        answer_score = cl_dict[a_score]
+
+    return answer_text, answer_score, reference_answers
 
 
+def train_classifier(csv_dataset, sklearn_classifier):
     """
-        Classify answers using threshold on cosine similarity or decision tree
+    Train an sklearn classifier on the given dataset using text similarity features
+    :param csv_dataset: an AnswersCSVDataset
+    :param sklearn_classifier: an sklearn classifier
+    :return: None
     """
-    if args.method == 'threshold':
-        avg = 0
-        for q in question_reference:
-            result = text_similarity(answer_line, q)
-            if 'Cosine' in result:
-                avg += result['Cosine']
 
-        avg /= len(question_reference)
+    X = []
+    Y = []
+    for sample in tqdm(csv_dataset):
+        a_text, score, references = get_row_data(sample)
+        Y.append(score)
 
-        if avg >= args.correct_threshold:
-            y_pred.append(0)
-        elif avg >= args.partial_threshold:
-            y_pred.append(1)
+        features = get_text_features(a_text, references)
+        X.append(features)
+
+    sklearn_classifier.fit(X, Y)
+
+
+def predict(csv_dataset, sklearn_classifier=None):
+    """
+    Test classifier on the given dataset, if no classifier is given, a simple cosine threshold will be used
+    :param csv_dataset: an AnswersCSVDataset
+    :param sklearn_classifier: an sklearn classifier
+    :return: predictions and ground truth labels
+    """
+    y_true = []
+    y_pred = []
+    for sample in tqdm(csv_dataset):
+        a_text, score, references = get_row_data(sample)
+        y_true.append(score)
+
+        # Predict using classifier
+        if sklearn_classifier:
+            features = get_text_features(a_text, references)
+            prediction = sklearn_classifier.predict([features])
+            y_pred.append(prediction[0])
+
+        # Predict using threshold
         else:
-            y_pred.append(2)
+            features = get_text_features(a_text, references, metrics=('Cosine',))
 
-    elif args.method == 'tree':
-        pass
+            if features[0] >= args.correct_threshold:
+                y_pred.append(0)
+            elif features[0] >= args.partial_threshold:
+                y_pred.append(1)
+            else:
+                y_pred.append(2)
+    return y_true, y_pred
 
 
-# Calculate Accuracy
-print(classification_report(y_true, y_pred))
+if __name__ == '__main__':
+
+    #
+    # Arguments:
+    #
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_data_path', type=str, default="./answers_train.csv",
+                        help='Path to the train dataset')
+    parser.add_argument('--test_data_path', type=str, default="./answers_train.csv",
+                        help='Path to the test dataset')
+
+    parser.add_argument('--method', type=str, default='threshold')
+    parser.add_argument('--correct_threshold', type=float, default=.2)
+    parser.add_argument('--partial_threshold', type=float, default=.1)
+
+    args = parser.parse_args()
+
+    #
+    # Load Data
+    #
+    test_data = AnswersCSVDataset(args.test_data_path)
+    train_data = AnswersCSVDataset(args.train_data_path) if args.train_data_path else None
+
+    #
+    # Fit on train set
+    #
+    classifier = None
+
+    # Decision Tree
+    if args.method == 'tree':
+        print(f"Training Decision Tree")
+        classifier = tree.DecisionTreeClassifier()
+        train_classifier(train_data, classifier)
+
+    # Threshold
+    else:
+        print(f"Threshold No Training")
+
+    # Predict
+    y_true, y_pred = predict(test_data, classifier)
+
+    #
+    # Calculate Accuracy
+    print(classification_report(y_true, y_pred))
