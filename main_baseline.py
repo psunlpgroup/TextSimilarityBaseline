@@ -15,7 +15,7 @@ def text_similarity(str1, str2):
     Wrapper method for TextSimilarity perl scripts
     :param str1: String to compare to str2
     :param str2: String to compare to str1
-    :return: Dices coefficient of the two token sequences
+    :return: Raw overlap, cosine, lesk and several other text similarity features in a dictionary
     """
     str1 = re.sub(r'[^a-zA-Z0-9 ]+', '', str1)
     str2 = re.sub(r'[^a-zA-Z0-9 ]+', '', str2)
@@ -99,7 +99,7 @@ def train_classifier(csv_dataset, sklearn_classifier):
     sklearn_classifier.fit(X, Y)
 
 
-def predict(csv_dataset, sklearn_classifier=None):
+def predict(csv_dataset, sklearn_classifier):
     """
     Test classifier on the given dataset, if no classifier is given, a simple cosine threshold will be used
     :param csv_dataset: an AnswersCSVDataset
@@ -113,21 +113,10 @@ def predict(csv_dataset, sklearn_classifier=None):
         y_true.append(score)
 
         # Predict using classifier
-        if sklearn_classifier:
-            features = get_text_features(a_text, references)
-            prediction = sklearn_classifier.predict([features])
-            y_pred.append(prediction[0])
+        features = get_text_features(a_text, references)
+        prediction = sklearn_classifier.predict([features])
+        y_pred.append(prediction[0])
 
-        # Predict using threshold
-        else:
-            features = get_text_features(a_text, references, metrics=('Cosine',))
-
-            if features[0] >= args.correct_threshold:
-                y_pred.append(0)
-            elif features[0] >= args.partial_threshold:
-                y_pred.append(1)
-            else:
-                y_pred.append(2)
     return y_true, y_pred
 
 
@@ -163,15 +152,15 @@ if __name__ == '__main__':
     if args.method == 'tree':
         print(f"Training Decision Tree")
         classifier = tree.DecisionTreeClassifier(max_depth=4)
-        train_classifier(train_data, classifier)
-    if args.method == 'svm':
+    elif args.method == 'svm':
         print("Training Support Vector Machine")
         classifier = svm.SVC()
-        train_classifier(train_data, classifier)
-
-    # Threshold
     else:
-        print(f"Threshold No Training")
+        print("Method not supported")
+        exit(0)
+
+    # Train
+    train_classifier(train_data, classifier)
 
     # Predict
     print("Testing")
