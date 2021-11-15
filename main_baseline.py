@@ -2,7 +2,7 @@ import argparse
 from tqdm import tqdm
 from dataset import AnswersCSVDataset, q_rubric_dict
 from sklearn.metrics import classification_report
-from sklearn import tree
+from sklearn import tree, svm
 import subprocess
 import re
 from torch.utils.data import DataLoader
@@ -162,7 +162,11 @@ if __name__ == '__main__':
     # Decision Tree
     if args.method == 'tree':
         print(f"Training Decision Tree")
-        classifier = tree.DecisionTreeClassifier()
+        classifier = tree.DecisionTreeClassifier(max_depth=4)
+        train_classifier(train_data, classifier)
+    if args.method == 'svm':
+        print("Training Support Vector Machine")
+        classifier = svm.SVC()
         train_classifier(train_data, classifier)
 
     # Threshold
