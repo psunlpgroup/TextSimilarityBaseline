@@ -63,9 +63,9 @@ def get_row_data(row):
     :param row: sample from dataset
     :return: answer text, question id,
     """
-    answer_text = row[1].strip()  # answer text
-    q_id = row[2]  # question id
-    a_score = row[3]  # answer score
+    answer_text = row[1][0].strip()  # answer text
+    q_id = row[2][0]  # question id
+    a_score = row[3][0]  # answer score
 
     # Get reference answers
     reference_answers = q_rubric_dict[q_id]
@@ -106,8 +106,8 @@ def predict(csv_dataset, sklearn_classifier=None):
     :param sklearn_classifier: an sklearn classifier
     :return: predictions and ground truth labels
     """
-    true = []
-    pred = []
+    y_true = []
+    y_pred = []
     for sample in tqdm(csv_dataset):
         a_text, score, references = get_row_data(sample)
         y_true.append(score)
@@ -128,7 +128,7 @@ def predict(csv_dataset, sklearn_classifier=None):
                 y_pred.append(1)
             else:
                 y_pred.append(2)
-    return true, pred
+    return y_true, y_pred
 
 
 if __name__ == '__main__':
@@ -137,9 +137,9 @@ if __name__ == '__main__':
     # Arguments:
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data_path', type=str, default="./Mid-PHYS-4way/Mid-PHYS-4way-trainSet.csv",
+    parser.add_argument('--train_data_path', type=str, default="./answers_train.csv",
                         help='Path to the train dataset')
-    parser.add_argument('--test_data_path', type=str, default="./Mid-PHYS-4way/Mid-PHYS-4way-testSet.csv",
+    parser.add_argument('--test_data_path', type=str, default="./answers_train.csv",
                         help='Path to the test dataset')
 
     parser.add_argument('--method', type=str, default='tree')
@@ -151,8 +151,8 @@ if __name__ == '__main__':
     #
     # Load Data
     #
-    test_data = DataLoader(AnswersCSVDataset([args.test_data_path]))
-    train_data = DataLoader(AnswersCSVDataset([args.train_data_path]) if args.train_data_path else None)
+    test_data = DataLoader(AnswersCSVDataset([args.test_data_path]), shuffle=True)
+    train_data = DataLoader(AnswersCSVDataset([args.train_data_path]), shuffle=True)
 
     #
     # Fit on train set
@@ -170,8 +170,7 @@ if __name__ == '__main__':
         print(f"Threshold No Training")
 
     # Predict
-    y_true, y_pred = predict(test_data, classifier)
+    labels, predictions = predict(test_data, classifier)
 
-    #
     # Calculate Accuracy
-    print(classification_report(y_true, y_pred))
+    print(classification_report(labels, predictions))
