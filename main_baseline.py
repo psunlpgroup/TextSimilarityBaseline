@@ -105,8 +105,8 @@ def predict(csv_dataset, sklearn_classifier=None):
     :param sklearn_classifier: an sklearn classifier
     :return: predictions and ground truth labels
     """
-    y_true = []
-    y_pred = []
+    true = []
+    pred = []
     for sample in tqdm(csv_dataset):
         a_text, score, references = get_row_data(sample)
         y_true.append(score)
@@ -127,7 +127,7 @@ def predict(csv_dataset, sklearn_classifier=None):
                 y_pred.append(1)
             else:
                 y_pred.append(2)
-    return y_true, y_pred
+    return true, pred
 
 
 if __name__ == '__main__':
@@ -136,12 +136,12 @@ if __name__ == '__main__':
     # Arguments:
     #
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data_path', type=str, default="./answers_train.csv",
+    parser.add_argument('--train_data_path', type=str, default="./Mid-PHYS-4way/Mid-PHYS-4way-trainSet.csv",
                         help='Path to the train dataset')
-    parser.add_argument('--test_data_path', type=str, default="./answers_train.csv",
+    parser.add_argument('--test_data_path', type=str, default="./Mid-PHYS-4way/Mid-PHYS-4way-testSet.csv",
                         help='Path to the test dataset')
 
-    parser.add_argument('--method', type=str, default='threshold')
+    parser.add_argument('--method', type=str, default='tree')
     parser.add_argument('--correct_threshold', type=float, default=.2)
     parser.add_argument('--partial_threshold', type=float, default=.1)
 
@@ -150,8 +150,8 @@ if __name__ == '__main__':
     #
     # Load Data
     #
-    test_data = AnswersCSVDataset(args.test_data_path)
-    train_data = AnswersCSVDataset(args.train_data_path) if args.train_data_path else None
+    test_data = AnswersCSVDataset([args.test_data_path])
+    train_data = AnswersCSVDataset([args.train_data_path]) if args.train_data_path else None
 
     #
     # Fit on train set
