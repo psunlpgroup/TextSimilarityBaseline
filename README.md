@@ -1,6 +1,6 @@
 # TextSimilarityBaseline
 
-A baseline for short response grading.
+A baseline model for short response grading.
 
 Features: Set overlap between student and references answers measured with dices coefficient
 
